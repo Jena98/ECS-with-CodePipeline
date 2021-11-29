@@ -1,0 +1,32 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo Build Dev prepare on `date`
+      - echo Logging in to Amazon ECR... 
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+      - go test
+  build:
+    commands:
+      - echo Build Dev started on `date`
+      - echo build golang app...
+      - go build -o app
+      - echo Building the Docker image...    
+      - docker build -t $IMAGE_REPO_NAME:$IMAGE_TAG .
+      - docker tag $IMAGE_REPO_NAME:$IMAGE_TAG $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG        
+  post_build:
+    commands:
+      - echo Build Dev completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo Create appspec.yaml file...
+      - sed -i s/AWS_DEFAULT_REGION/$AWS_DEFAULT_REGION/ appspec.yaml 
+      - sed -i s/AWS_ACCOUNT_ID/$AWS_ACCOUNT_ID/ appspec.yaml 
+      - sed -i s/TASK_NAME/$TASK_NAME/ appspec.yaml 
+      - sed -i s/CONTAINER_NAME/$CONTAINER_NAME/ appspec.yaml 
+      - sed -i s/CONTAINER_PORT/$CONTAINER_PORT/ appspec.yaml 
+artifacts: 
+  files:  
+  - appspec.yaml
+
